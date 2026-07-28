@@ -1,1 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Flight Plan — Ravenscroft Middle School</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500&display=swap" rel="stylesheet" />
 
+  <style>
+    :root {
+      --green:       #00703C;
+      --green-dark:  #005a2f;
+      --green-light: #e6f3ec;
+      --gold:        #FFC702;
+      --gold-dark:   #e0ae00;
+      --text:        #1a1a1a;
+      --text-muted:  #666;
+      --text-faint:  #999;
+      --border:      #ddd;
+      --surface:     #f8f8f6;
+      --white:       #fff;
+      --radius:      12px;
+      --radius-sm:   7px;
+
+      /* Level colors matching the acceptable use scale */
+      --l1-bg:     #f9e8ec;
+      --l1-border: #e0a0b0;
+      --l1-text:   #8b2a3a;
+      --l1-dark:   #6b1f2c;
+
+      --l2-bg:     #ede8f5;
+      --l2-border: #b8a0d8;
+      --l2-text:   #4a2d80;
+      --l2-dark:   #362060;
+
+      --l3-bg:     #e6f3ec;
+      --l3-border: #80c4a0;
+      --l3-text:   #00703C;
+      --l3-dark:   #005a2f;
+
+      --l4-bg:     #e6eef8;
+      --l4-border: #90b4e0;
+      --l4-text:   #1a4d8f;
+      --l4-dark:   #133a6b;
+
+      --l5-bg:     #fdf6d8;
+      --l5-border: #e0c840;
+      --l5-text:   #7a5c00;
+      --l5-dark:   #5a4400;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 18px; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--surface);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 3rem 2rem 6rem;
+    }
+
+    .page { max-width: 900px; margin: 0 auto; }
+
+    /* ── NAMEPLATE ── */
+    .nameplate {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+    .nameplate-left { display: flex; align-items: center; gap: 12px; }
+    .nameplate-icon {
+      width: 60px; height: 60px;
+      background: var(--green);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .nameplate-icon span {
+      display: inline-block;
+      filter: brightness(0) invert(1);
+      font-size: 42px;
+      line-height: 1;
+    }
+    .nameplate h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 22px; font-weight: 400; color: var(--text);
+    }
+    .nameplate p { font-size: 14px; color: var(--text-muted); margin-top: 1px; }
+    .nameplate-step {
+      font-size: 14px; color: var(--text-muted);
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 20px; padding: 4px 14px;
+    }
+
+    /* ── PROGRESS ── */
+    .progress-wrap { margin-bottom: 1.5rem; }
+    .progress-dots { display: flex; align-items: center; margin-bottom: 8px; }
+    .dot {
+      width: 38px; height: 38px; border-radius: 50%;
+      border: 1.5px solid var(--border);
+      background: var(--white);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 500; color: var(--text-muted);
+      flex-shrink: 0; transition: all 0.25s; position: relative; z-index: 1;
+      cursor: pointer;
+    }
+    .dot:hover:not(.active):not(.skipped) { border-color: var(--green); color: var(--green); }
+    .dot.active {
+      background: var(--green); border-color: var(--green); color: white;
+      box-shadow: 0 0 0 4px rgba(0,112,60,0.12);
+      cursor: default;
+    }
+    .dot.done {
+      background: var(--green-light); border-color: var(--green); color: var(--green);
+      font-size: 16px;
+    }
+    .dot.skipped { background: #f0f0f0; border-color: #ccc; color: #bbb; cursor: default; }
+    .dot-line { flex: 1; height: 1.5px; background: var(--border); transition: background 0.3s; }
+    .dot-line.done { background: var(--green); }
+    .dot-line.skipped { background: transparent; border-top: 1.5px dashed #ccc; }
+    .progress-labels { display: flex; justify-content: space-between; padding: 0 2px; }
+    .progress-labels span {
+      font-size: 12px; color: var(--text-faint);
+      text-align: center; flex: 1; line-height: 1.3;
+      cursor: pointer;
+    }
+    .progress-labels span:hover { color: var(--green); }
+    .progress-labels span.active-lbl { color: var(--green); font-weight: 500; cursor: default; }
+    .progress-labels span.skipped-lbl { color: #ccc; cursor: default; }
+
+    /* ── WIZARD CARD ── */
+    .wiz-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      min-height: 420px;
+      display: flex; flex-direction: column;
+    }
+    .wiz-gold-bar { height: 4px; background: var(--gold); }
+    .wiz-body {
+      padding: 2.25rem 2.25rem 1.25rem;
+      flex: 1; display: flex; flex-direction: column;
+    }
+    .step-label {
+      font-size: 12px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.09em;
+      color: var(--green); margin-bottom: 10px;
+    }
+    .step-q {
+      font-family: 'DM Serif Display', serif;
+      font-size: 28px; font-weight: 400; color: var(--text);
+      line-height: 1.35; margin-bottom: 8px;
+    }
+    .step-hint {
+      font-size: 15px; color: var(--text-muted);
+      line-height: 1.6; margin-bottom: 1.75rem;
+    }
+    .step-content { flex: 1; }
+
+    /* ── INPUTS ── */
+    .field-stack { display: flex; flex-direction: column; gap: 14px; }
+    .field-group label {
+      display: block; font-size: 12px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--text-muted); margin-bottom: 5px;
+    }
+    .field-group input,
+    .field-group select {
+      width: 100%; font-family: 'DM Sans', sans-serif;
+      font-size: 16px; padding: 11px 14px;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--surface); color: var(--text);
+      transition: border-color 0.15s, background 0.15s;
+      appearance: none;
+    }
+    .field-group input:focus,
+    .field-group select:focus {
+      outline: none; border-color: var(--green); background: var(--white);
+    }
+    .field-group input::placeholder { color: var(--text-faint); }
+    .select-wrap { position: relative; }
+    .select-wrap::after {
+      content: '\f078'; font-family: 'Font Awesome 6 Free'; font-weight: 900;
+      font-size: 11px; color: var(--text-muted);
+      position: absolute; right: 14px; top: 50%;
+      transform: translateY(-50%); pointer-events: none;
+    }
+
+    textarea.wiz-ta {
+      width: 100%; font-family: 'DM Sans', sans-serif;
+      font-size: 16px; padding: 13px 15px;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--surface); color: var(--text);
+      resize: none; min-height: 150px; line-height: 1.65;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    textarea.wiz-ta:focus {
+      outline: none; border-color: var(--green); background: var(--white);
+    }
+    textarea.wiz-ta::placeholder { color: var(--text-faint); }
+
+    /* ── LEVEL CARDS (the visual heart of Step 2) ── */
+    .level-cards {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+    .lc {
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 18px 8px 14px;
+      cursor: pointer;
+      background: var(--surface);
+      text-align: center;
+      transition: all 0.18s;
+      font-family: 'DM Sans', sans-serif;
+      user-select: none;
+      position: relative;
+    }
+    .lc:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .lc:active { transform: scale(0.97); }
+
+    .lc-emoji { font-size: 30px; display: block; margin-bottom: 8px; line-height: 1; }
+    .lc-num {
+      display: block;
+      font-family: 'DM Serif Display', serif;
+      font-size: 13px; font-weight: 400;
+      margin-bottom: 4px; letter-spacing: 0.04em;
+    }
+    .lc-title {
+      display: block; font-size: 11px; font-weight: 500;
+      line-height: 1.3; margin-bottom: 6px;
+    }
+    .lc-copilot {
+      display: block; font-size: 10px;
+      line-height: 1.4; margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(0,0,0,0.08);
+      font-style: italic;
+    }
+
+    /* Per-level colors */
+    .lc[data-level="1"] { background: var(--l1-bg); border-color: var(--l1-border); }
+    .lc[data-level="1"] .lc-num  { color: var(--l1-text); }
+    .lc[data-level="1"] .lc-title { color: var(--l1-dark); }
+    .lc[data-level="1"] .lc-copilot { color: var(--l1-text); }
+
+    .lc[data-level="2"] { background: var(--l2-bg); border-color: var(--l2-border); }
+    .lc[data-level="2"] .lc-num  { color: var(--l2-text); }
+    .lc[data-level="2"] .lc-title { color: var(--l2-dark); }
+    .lc[data-level="2"] .lc-copilot { color: var(--l2-text); }
+
+    .lc[data-level="3"] { background: var(--l3-bg); border-color: var(--l3-border); }
+    .lc[data-level="3"] .lc-num  { color: var(--l3-text); }
+    .lc[data-level="3"] .lc-title { color: var(--l3-dark); }
+    .lc[data-level="3"] .lc-copilot { color: var(--l3-text); }
+
+    .lc[data-level="4"] { background: var(--l4-bg); border-color: var(--l4-border); }
+    .lc[data-level="4"] .lc-num  { color: var(--l4-text); }
+    .lc[data-level="4"] .lc-title { color: var(--l4-dark); }
+    .lc[data-level="4"] .lc-copilot { color: var(--l4-text); }
+
+    .lc[data-level="5"] { background: var(--l5-bg); border-color: var(--l5-border); }
+    .lc[data-level="5"] .lc-num  { color: var(--l5-text); }
+    .lc[data-level="5"] .lc-title { color: var(--l5-dark); }
+    .lc[data-level="5"] .lc-copilot { color: var(--l5-text); }
+
+    /* Selected state: brighten border, add glow */
+    .lc.sel[data-level="1"] { border-color: var(--l1-dark); box-shadow: 0 0 0 3px rgba(139,42,58,0.15); }
+    .lc.sel[data-level="2"] { border-color: var(--l2-dark); box-shadow: 0 0 0 3px rgba(74,45,128,0.15); }
+    .lc.sel[data-level="3"] { border-color: var(--l3-dark); box-shadow: 0 0 0 3px rgba(0,112,60,0.15); }
+    .lc.sel[data-level="4"] { border-color: var(--l4-dark); box-shadow: 0 0 0 3px rgba(26,77,143,0.15); }
+    .lc.sel[data-level="5"] { border-color: var(--l5-dark); box-shadow: 0 0 0 3px rgba(122,92,0,0.15); }
+
+    .lc.sel::after {
+      content: '\f00c';
+      font-family: 'Font Awesome 6 Free'; font-weight: 900;
+      font-size: 10px; color: white;
+      position: absolute; top: 8px; right: 8px;
+      background: var(--green);
+      width: 18px; height: 18px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      line-height: 18px;
+    }
+
+    /* Level 1 skip notice */
+    .level1-notice {
+      margin-top: 14px;
+      padding: 12px 16px;
+      background: var(--l1-bg);
+      border: 1px solid var(--l1-border);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      color: var(--l1-dark);
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+    .level1-notice.visible { display: flex; }
+    .level1-notice i { font-size: 16px; flex-shrink: 0; }
+
+    /* ── EVIDENCE OPTIONS ── */
+    .evidence-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    .ev-opt {
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px 18px;
+      cursor: pointer;
+      background: var(--surface);
+      font-size: 15px; color: var(--text);
+      text-align: left;
+      transition: all 0.15s;
+      font-family: 'DM Sans', sans-serif;
+      line-height: 1.4;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .ev-opt i { font-size: 20px; color: var(--text-muted); flex-shrink: 0; }
+    .ev-icon {
+      font-size: 20px; font-weight: 700; color: var(--text-muted);
+      flex-shrink: 0; width: 24px; text-align: center;
+    }
+    .ev-opt.sel .ev-icon { color: var(--green); }
+    .ev-opt:hover { border-color: #aaa; background: #f0f0ee; }
+    .ev-opt.sel { border: 2px solid var(--green); background: var(--green-light); color: var(--green-dark); }
+    .ev-opt.sel i { color: var(--green); }
+    .ev-opt-sub { font-size: 13px; color: var(--text-faint); margin-top: 2px; display: block; }
+    .ev-opt.sel .ev-opt-sub { color: var(--green-dark); opacity: 0.75; }
+
+    /* ── NAV ── */
+    .wiz-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.25rem 2.25rem 1.5rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .btn-back {
+      padding: 10px 22px; font-size: 15px;
+      border: 1.5px solid var(--border); border-radius: 50px;
+      background: transparent; color: var(--text-muted);
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: all 0.15s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .btn-back:hover { background: var(--white); border-color: var(--green); color: var(--green); }
+    .btn-back:disabled { opacity: 0.3; cursor: default; pointer-events: none; }
+    .btn-next {
+      padding: 11px 28px; font-size: 15px; font-weight: 500;
+      border: none; border-radius: 50px;
+      background: var(--green); color: white;
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+      display: flex; align-items: center; gap: 10px;
+      box-shadow: 0 2px 8px rgba(0,112,60,0.25);
+    }
+    .btn-next:hover { background: var(--green-dark); box-shadow: 0 4px 14px rgba(0,112,60,0.35); }
+    .btn-next:active { transform: scale(0.97); }
+    .btn-next.print-mode {
+      background: var(--gold-dark); color: var(--text);
+      box-shadow: 0 2px 8px rgba(224,174,0,0.3);
+    }
+    .btn-next.print-mode:hover { background: #c99d00; }
+
+    /* ── SUMMARY ── */
+    .summary-table { width: 100%; border-collapse: collapse; }
+    .summary-table tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+    .summary-table td { padding: 10px 0; vertical-align: top; font-size: 15px; }
+    .sum-label {
+      color: var(--text-muted); font-size: 12px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      width: 160px; padding-right: 16px; padding-top: 12px;
+    }
+    .sum-val { color: var(--text); line-height: 1.6; }
+    .sum-badge {
+      display: inline-block;
+      font-size: 13px; font-weight: 500;
+      padding: 5px 14px; border-radius: 20px; border: 1px solid;
+    }
+    .summary-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 1.25rem; padding-bottom: 1rem;
+      border-bottom: 2px solid var(--gold);
+    }
+    .summary-header i { color: var(--green); font-size: 20px; }
+    .summary-check {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--green); color: white;
+      font-size: 15px; font-weight: 700; flex-shrink: 0;
+    }
+    .summary-header span {
+      font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--text);
+    }
+
+    /* ── PRINT HEADER ── */
+    .print-header { display: none; }
+
+    /* ── ANIMATION ── */
+    .step-enter { animation: fadeSlide 0.2s ease forwards; }
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .hidden { display: none !important; }
+
+    /* ══════════════════════════════════════
+       PRINT
+    ══════════════════════════════════════ */
+    @media print {
+      @page { size: letter portrait; margin: 0.55in 0.6in; }
+      html { font-size: 13px !important; }
+      body {
+        background: white !important; padding: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .page { max-width: 100% !important; }
+      .nameplate, .progress-wrap, .wiz-gold-bar,
+      .step-label, .step-hint, .wiz-nav { display: none !important; }
+      .print-header {
+        display: flex !important; align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px; padding-bottom: 10px;
+        border-bottom: 3px solid #00703C;
+      }
+      .print-header-left h1 {
+        font-family: 'DM Serif Display', serif;
+        font-size: 20px; font-weight: 400; color: #00703C;
+      }
+      .print-header-left p { font-size: 11px; color: #666; margin-top: 2px; }
+      .print-header-badge {
+        background: #FFC702 !important; color: #00703C;
+        font-size: 10px; font-weight: 500; padding: 4px 12px;
+        border-radius: 20px; letter-spacing: 0.05em; text-transform: uppercase;
+        -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+      }
+      .wiz-card { border: none !important; min-height: unset !important; }
+      .wiz-body { padding: 0 !important; }
+      .step-pane { display: none !important; }
+      #print-summary { display: block !important; }
+      .summary-header { margin-bottom: 10px !important; padding-bottom: 8px !important; }
+      .summary-table td { padding: 7px 0 !important; font-size: 12px !important; }
+      .sum-label { font-size: 10px !important; width: 140px !important; padding-top: 9px !important; }
+      .sum-badge { font-size: 11px !important; padding: 3px 10px !important; }
+      .print-footer {
+        display: block !important; margin-top: 16px;
+        padding: 10px 14px; background: #FFC702 !important;
+        border-radius: 6px; font-size: 11px; color: #1a1a1a;
+        -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+      }
+      .print-footer strong { color: #00703C; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- PRINT-ONLY HEADER -->
+  <div class="print-header">
+    <div class="print-header-left">
+      <h1>AI Flight Plan</h1>
+      <p>Ravenscroft Middle School &nbsp;·&nbsp; Honest accounting of AI use</p>
+    </div>
+    <div class="print-header-badge">Mission Log</div>
+  </div>
+
+  <!-- NAMEPLATE -->
+  <div class="nameplate">
+    <div class="nameplate-left">
+      <div class="nameplate-icon"><span>✈</span></div>
+      <div>
+        <h1>AI Flight Plan</h1>
+        <p>Ravenscroft Middle School &nbsp;·&nbsp; Mission Log</p>
+      </div>
+    </div>
+    <div class="nameplate-step" id="step-counter">Step 1 of 4</div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-wrap">
+    <div class="progress-dots" id="progress-dots">
+      <div class="dot active" id="dot-0">1</div>
+      <div class="dot-line" id="line-0"></div>
+      <div class="dot" id="dot-1">2</div>
+      <div class="dot-line" id="line-1"></div>
+      <div class="dot" id="dot-2">3</div>
+      <div class="dot-line" id="line-2"></div>
+      <div class="dot" id="dot-3">4</div>
+      <div class="dot-line" id="line-3"></div>
+      <div class="dot" id="dot-4">5</div>
+    </div>
+    <div class="progress-labels">
+      <span class="active-lbl" id="lbl-0">About you</span>
+      <span id="lbl-1">AI level</span>
+      <span id="lbl-2">How you used it</span>
+      <span id="lbl-3">Your work</span>
+      <span id="lbl-4">Evidence</span>
+    </div>
+  </div>
+
+  <!-- WIZARD CARD -->
+  <div class="wiz-card">
+    <div class="wiz-gold-bar"></div>
+    <div class="wiz-body">
+
+      <!-- STEP 0: About you -->
+      <div class="step-pane" id="step-0">
+        <div class="step-label">Step 1 &nbsp;·&nbsp; About this assignment</div>
+        <div class="step-q">First, tell us who you are and what you're working on.</div>
+        <div class="step-hint">This goes at the top of your Flight Plan so your teacher knows what it's for.</div>
+        <div class="step-content">
+          <div class="field-stack">
+            <div class="field-group">
+              <label>Your name</label>
+              <input id="v-name" type="text" placeholder="First and last name" autocomplete="name" />
+            </div>
+            <div class="field-group">
+              <label>Teacher &amp; class</label>
+              <input id="v-class" type="text" placeholder="e.g. Ms. Nguyen · English 7" />
+            </div>
+            <div class="field-group">
+              <label>Assignment name</label>
+              <input id="v-assign" type="text" placeholder="What are you working on?" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 1: AI Level -->
+      <div class="step-pane hidden" id="step-1">
+        <div class="step-label">Step 2 &nbsp;·&nbsp; AI level</div>
+        <div class="step-q">Which level describes how you used AI?</div>
+        <div class="step-hint">You're always the 🧑‍✈️ co-pilot — never a passenger. Pick the level that fits your role on this assignment.</div>
+        <div class="step-content">
+          <div class="level-cards" id="level-cards">
+
+            <div class="lc" data-level="1" onclick="pickLevel(this,1)" tabindex="0" role="button" aria-label="Level 1: No AI Use">
+              <span class="lc-emoji">🚫</span>
+              <span class="lc-num">LEVEL 1</span>
+              <span class="lc-title">No AI Use</span>
+              <span class="lc-copilot">You do 100% of the work yourself.</span>
+            </div>
+
+            <div class="lc" data-level="2" onclick="pickLevel(this,2)" tabindex="0" role="button" aria-label="Level 2: Thought Partner">
+              <span class="lc-emoji">💡</span>
+              <span class="lc-num">LEVEL 2</span>
+              <span class="lc-title">AI as a Thought Partner</span>
+              <span class="lc-copilot">You explore ideas with AI, then create your own work.</span>
+            </div>
+
+            <div class="lc" data-level="3" onclick="pickLevel(this,3)" tabindex="0" role="button" aria-label="Level 3: Editor">
+              <span class="lc-emoji">✏️</span>
+              <span class="lc-num">LEVEL 3</span>
+              <span class="lc-title">AI as an Editor</span>
+              <span class="lc-copilot">You create first, then use AI to polish your work.</span>
+            </div>
+
+            <div class="lc" data-level="4" onclick="pickLevel(this,4)" tabindex="0" role="button" aria-label="Level 4: Analyst">
+              <span class="lc-emoji">📊</span>
+              <span class="lc-num">LEVEL 4</span>
+              <span class="lc-title">AI as an Analyst</span>
+              <span class="lc-copilot">You use AI insights to strengthen your own thinking.</span>
+            </div>
+
+            <div class="lc" data-level="5" onclick="pickLevel(this,5)" tabindex="0" role="button" aria-label="Level 5: Co-creator">
+              <span class="lc-emoji">🤝</span>
+              <span class="lc-num">LEVEL 5</span>
+              <span class="lc-title">AI as a Co-creator</span>
+              <span class="lc-copilot">You guide AI, make decisions, and check all outputs.</span>
+            </div>
+
+          </div>
+
+          <!-- Level 1 skip notice -->
+          <div class="level1-notice" id="level1-notice">
+            <span style="font-size:18px;">⏭</span>
+            <span>Since you didn't use AI, we'll skip the next two questions and take you straight to your summary.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: How you used AI (skipped for Level 1) -->
+      <div class="step-pane hidden" id="step-2">
+        <div class="step-label">Step 3 &nbsp;·&nbsp; How you used AI</div>
+        <div class="step-q">Describe exactly how AI was involved in your work.</div>
+        <div class="step-hint">Be honest and specific. "I asked Gemini/Flint to give me three thesis ideas and I picked one" is a perfect answer.</div>
+        <div class="step-content">
+          <div class="field-stack">
+            <div class="field-group">
+              <label>AI platform used</label>
+              <div class="select-wrap">
+                <select id="v-platform" onchange="toggleOtherPlatform(this.value)">
+                  <option value="">— select one —</option>
+                  <option value="Gemini">Gemini</option>
+                  <option value="Flint">Flint</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+            <div class="field-group hidden" id="other-platform-group">
+              <label>Please specify</label>
+              <input id="v-platform-other" type="text" placeholder="Which AI tool did you use?" />
+            </div>
+            <div class="field-group">
+              <label>Describe how you used it</label>
+              <textarea class="wiz-ta" id="v-how" placeholder="What did you ask it to do? What did it produce?"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3: Your contribution (skipped for Level 1) -->
+      <div class="step-pane hidden" id="step-3">
+        <div class="step-label">Step 4 &nbsp;·&nbsp; Your contribution</div>
+        <div class="step-q">What parts of this work are entirely yours?</div>
+        <div class="step-hint">This is the most important part. What thinking, writing, or problem-solving did YOU do that AI didn't?</div>
+        <div class="step-content">
+          <textarea class="wiz-ta" id="v-mine" placeholder="e.g. I wrote every paragraph myself. I made all decisions about structure and argument."></textarea>
+        </div>
+      </div>
+
+      <!-- STEP 4: Evidence -->
+      <div class="step-pane hidden" id="step-4">
+        <div class="step-label" id="evidence-step-label">Step 5 &nbsp;·&nbsp; Evidence</div>
+        <div class="step-q">Are you prepared to share evidence of your AI use with your teacher?</div>
+        <div class="step-hint">This could be a screenshot of your Gemini or Flint conversation. Your teacher may ask to see it.</div>
+        <div class="step-content">
+          <div class="evidence-grid">
+            <div class="ev-opt" onclick="pickEvidence(this,'yes')" tabindex="0" role="button">
+              <span class="ev-icon">✓</span>
+              <div>
+                Yes — I will upload a chat log or screenshots
+                <span class="ev-opt-sub">I have a screenshot of my Gemini or Flint conversation ready to share</span>
+              </div>
+            </div>
+            <div class="ev-opt" onclick="pickEvidence(this,'unsure')" tabindex="0" role="button">
+              <span class="ev-icon">?</span>
+              <div>
+                No — I'm not sure how to find or upload what I need
+                <span class="ev-opt-sub">I used AI but need help locating my conversation history</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUMMARY (screen) -->
+      <div class="step-pane hidden" id="step-5">
+        <div class="summary-header">
+          <span class="summary-check">✓</span>
+          <span>Flight Plan complete — ready to print or share</span>
+        </div>
+        <table class="summary-table" id="summary-table"></table>
+      </div>
+
+      <!-- PRINT-ONLY SUMMARY -->
+      <div id="print-summary" style="display:none;">
+        <div class="summary-header">
+          <span class="summary-check">✓</span>
+          <span>Flight Plan Summary</span>
+        </div>
+        <table class="summary-table" id="print-summary-table"></table>
+      </div>
+
+    </div><!-- /wiz-body -->
+
+    <div class="wiz-nav">
+      <button class="btn-back" id="btn-back" onclick="goBack()" disabled>
+        ← Back
+      </button>
+      <button class="btn-next" id="btn-next" onclick="goNext()">
+        Next →
+      </button>
+    </div>
+  </div><!-- /wiz-card -->
+
+  <div class="print-footer" style="display:none;">
+    <strong>Flight Plan commitment:</strong> Be honest about your AI use &nbsp;·&nbsp; Use school-provided AI tools &nbsp;·&nbsp; Be prepared to share evidence of your AI conversations
+  </div>
+
+</div>
+
+<script>
+  var cur = 0;
+  var levelSel = 0;
+  var evidenceSel = '';
+
+  var levelData = {
+    1: { label: 'Level 1 · No AI Use',      color: '#8b2a3a', bg: '#f9e8ec', border: '#e0a0b0' },
+    2: { label: 'Level 2 · Thought Partner', color: '#4a2d80', bg: '#ede8f5', border: '#b8a0d8' },
+    3: { label: 'Level 3 · Editor',          color: '#00703C', bg: '#e6f3ec', border: '#80c4a0' },
+    4: { label: 'Level 4 · Analyst',         color: '#1a4d8f', bg: '#e6eef8', border: '#90b4e0' },
+    5: { label: 'Level 5 · Co-creator',      color: '#7a5c00', bg: '#fdf6d8', border: '#e0c840' },
+  };
+
+  var evidenceLabels = {
+    'yes':    'Yes — will upload screenshots or chat log',
+    'unsure': 'No — not sure how to find or upload evidence',
+    '':       '—'
+  };
+
+  // Level 1: 0→1→4→5  |  Level 2-5: 0→1→2→3→4→5
+  function getSequence() {
+    return levelSel === 1 ? [0, 1, 4, 5] : [0, 1, 2, 3, 4, 5];
+  }
+
+  // ── PROGRESS BAR CLICK NAVIGATION ──
+  // Called by onclick on each dot and label; only navigates to visited steps
+  function navToDot(i) {
+    var seq = getSequence();
+    var skipped = levelSel === 1 ? [2, 3] : [];
+    if (skipped.indexOf(i) !== -1) return; // can't click a skipped step
+    var targetPosInSeq = seq.indexOf(i);
+    var curPosInSeq    = seq.indexOf(cur);
+    // Allow navigation to any step the user has already passed, or the current one
+    if (targetPosInSeq !== -1 && targetPosInSeq <= curPosInSeq) {
+      showStep(i);
+    }
+  }
+
+  function updateProgress(stepId) {
+    var seq = getSequence();
+    var skipped = levelSel === 1 ? [2, 3] : [];
+
+    for (var i = 0; i < 5; i++) {
+      var dot  = document.getElementById('dot-' + i);
+      var line = document.getElementById('line-' + i);
+      var lbl  = document.getElementById('lbl-' + i);
+
+      var isSkipped   = skipped.indexOf(i) !== -1;
+      var posInSeq    = seq.indexOf(i);
+      var curPosInSeq = seq.indexOf(stepId);
+
+      // Wire up click handler on dot and label
+      (function(idx) {
+        dot.onclick = function() { navToDot(idx); };
+        if (lbl) lbl.onclick = function() { navToDot(idx); };
+      })(i);
+
+      if (isSkipped) {
+        dot.className = 'dot skipped';
+        dot.textContent = i + 1;
+        if (line) line.className = 'dot-line skipped';
+        if (lbl)  lbl.className = 'skipped-lbl';
+      } else if (stepId === 5 || posInSeq < curPosInSeq) {
+        // DONE: use a plain ✓ character — no Font Awesome inner tag needed
+        dot.className = 'dot done';
+        dot.textContent = '✓';
+        if (line) line.className = 'dot-line done';
+        if (lbl)  lbl.className = '';
+      } else if (i === stepId) {
+        dot.className = 'dot active';
+        dot.textContent = i + 1;
+        if (line) line.className = 'dot-line';
+        if (lbl)  lbl.className = 'active-lbl';
+      } else {
+        dot.className = 'dot';
+        dot.textContent = i + 1;
+        if (line) line.className = 'dot-line';
+        if (lbl)  lbl.className = '';
+      }
+    }
+
+    // Step counter pill
+    var seqPos = seq.indexOf(stepId);
+    if (stepId === 5) {
+      document.getElementById('step-counter').textContent = 'Complete';
+    } else {
+      var totalVisible = seq.length - 1;
+      document.getElementById('step-counter').textContent =
+        'Step ' + (seqPos + 1) + ' of ' + totalVisible;
+    }
+  }
+
+  function showStep(stepId) {
+    document.querySelectorAll('.step-pane').forEach(function(p) { p.classList.add('hidden'); });
+    var target = document.getElementById('step-' + stepId);
+    if (target) {
+      target.classList.remove('hidden');
+      target.classList.add('step-enter');
+      setTimeout(function() { target.classList.remove('step-enter'); }, 300);
+    }
+
+    updateProgress(stepId);
+
+    document.getElementById('btn-back').disabled = (stepId === 0);
+
+    var nextBtn = document.getElementById('btn-next');
+    var seq = getSequence();
+    var posInSeq = seq.indexOf(stepId);
+    var isLastBeforeSummary = posInSeq === seq.length - 2;
+
+    if (stepId === 5) {
+      nextBtn.innerHTML = '🖨 Print / Save PDF';
+      nextBtn.className = 'btn-next print-mode';
+      nextBtn.onclick = doPrint;
+    } else if (isLastBeforeSummary) {
+      nextBtn.innerHTML = 'See summary →';
+      nextBtn.className = 'btn-next';
+      nextBtn.onclick = goNext;
+    } else {
+      nextBtn.innerHTML = 'Next →';
+      nextBtn.className = 'btn-next';
+      nextBtn.onclick = goNext;
+    }
+
+    cur = stepId;
+  }
+
+  function goNext() {
+    var seq = getSequence();
+    var posInSeq = seq.indexOf(cur);
+    if (posInSeq === seq.length - 2) buildSummary();
+    if (posInSeq < seq.length - 1) showStep(seq[posInSeq + 1]);
+  }
+
+  function goBack() {
+    var seq = getSequence();
+    var posInSeq = seq.indexOf(cur);
+    if (posInSeq > 0) showStep(seq[posInSeq - 1]);
+  }
+
+  function pickLevel(el, n) {
+    levelSel = n;
+    document.querySelectorAll('.lc').forEach(function(b) { b.classList.remove('sel'); });
+    el.classList.add('sel');
+    document.getElementById('level1-notice').classList.toggle('visible', n === 1);
+    document.getElementById('evidence-step-label').textContent =
+      n === 1 ? 'Step 3 · Evidence' : 'Step 5 · Evidence';
+    // Re-render progress bar to show/hide skipped steps immediately
+    updateProgress(cur);
+  }
+
+  function pickEvidence(el, val) {
+    evidenceSel = val;
+    document.querySelectorAll('.ev-opt').forEach(function(b) { b.classList.remove('sel'); });
+    el.classList.add('sel');
+  }
+
+  // Show/hide the "Other — please specify" input in Step 3
+  function toggleOtherPlatform(val) {
+    var group = document.getElementById('other-platform-group');
+    if (val === 'Other') {
+      group.classList.remove('hidden');
+      document.getElementById('v-platform-other').focus();
+    } else {
+      group.classList.add('hidden');
+      document.getElementById('v-platform-other').value = '';
+    }
+  }
+
+  function getPlatformValue() {
+    var sel = document.getElementById('v-platform').value;
+    if (sel === 'Other') {
+      var other = document.getElementById('v-platform-other').value.trim();
+      return other ? other : 'Other';
+    }
+    return sel;
+  }
+
+  function buildSummaryRows() {
+    var ld = levelData[levelSel] || {};
+    var rows = [
+      { label: 'Student',    val: document.getElementById('v-name').value   || '—', type: 'text' },
+      { label: 'Class',      val: document.getElementById('v-class').value  || '—', type: 'text' },
+      { label: 'Assignment', val: document.getElementById('v-assign').value || '—', type: 'text' },
+      { label: 'AI Level',   val: ld.label || '—', type: 'badge',
+        color: ld.color, bg: ld.bg, border: ld.border },
+    ];
+    if (levelSel !== 1) {
+      rows.push({ label: 'AI Platform',     val: getPlatformValue() || '—', type: 'text' });
+      rows.push({ label: 'How I used AI',   val: document.getElementById('v-how').value  || '—', type: 'text' });
+      rows.push({ label: 'My contribution', val: document.getElementById('v-mine').value || '—', type: 'text' });
+      rows.push({ label: 'Evidence ready',  val: evidenceLabels[evidenceSel] || '—', type: 'text' });
+    } else {
+      rows.push({ label: 'AI use', val: 'No AI used on this assignment.', type: 'text' });
+    }
+    return rows;
+  }
+
+  function renderSummaryTable(tableEl, rows) {
+    tableEl.innerHTML = rows.map(function(r) {
+      var valHTML = r.type === 'badge'
+        ? '<span class="sum-badge" style="color:' + r.color + ';background:' + r.bg + ';border-color:' + r.border + '">' + r.val + '</span>'
+        : '<span class="sum-val">' + r.val.replace(/\n/g, '<br>') + '</span>';
+      return '<tr><td class="sum-label">' + r.label + '</td><td>' + valHTML + '</td></tr>';
+    }).join('');
+  }
+
+  function buildSummary() {
+    var rows = buildSummaryRows();
+    renderSummaryTable(document.getElementById('summary-table'), rows);
+    renderSummaryTable(document.getElementById('print-summary-table'), rows);
+  }
+
+  function doPrint() { buildSummary(); window.print(); }
+  window.addEventListener('beforeprint', buildSummary);
+
+  showStep(0);
+</script>
+</body>
+</html>
